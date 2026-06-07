@@ -47,19 +47,6 @@ const referralIncomeSchema = new Schema(
       default: Date.now,
       index: true,
     },
-
-    // Optional traceability — the investment (or other source) that produced this income.
-    sourceInvestment: {
-      type: Schema.Types.ObjectId,
-      ref: 'Investment',
-      default: null,
-    },
-
-    // Optional percentage snapshot for audit ("this credit was 5% of the daily ROI")
-    percentageApplied: {
-      type: Number,
-      min: 0,
-    },
   },
   {
     timestamps: true,

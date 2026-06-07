@@ -1,45 +1,29 @@
-const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const { User } = require('../models');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'nexchain-dev-secret-change-me';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const COOKIE_NAME = process.env.COOKIE_NAME || 'nexchain_token';
+// 7 days in ms, must match the JWT expiry semantics above.
+const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const BCRYPT_SALT_ROUNDS = 12;
 
 /**
- * Password hashing using Node's built-in scrypt.
- * - scrypt is memory-hard and ships with Node — no native build step.
- * - Stored format: "scrypt:N:r:p:saltHex:hashHex"
- *   Parameters are kept inline so we can tune cost later without a migration.
+ * Password hashing using bcrypt.
+ * - bcrypt is the de-facto standard for password storage in Node.
+ * - The salt is generated and stored inline with the hash, so we never
+ *   need a separate salt column.
  */
-const SCRYPT_N = 16384;
-const SCRYPT_r = 8;
-const SCRYPT_p = 1;
-const KEY_LEN = 64;
-const SALT_LEN = 16;
-
 function hashPassword(plain) {
-  const salt = crypto.randomBytes(SALT_LEN);
-  const derived = crypto.scryptSync(plain, salt, KEY_LEN, {
-    N: SCRYPT_N,
-    r: SCRYPT_r,
-    p: SCRYPT_p,
-  });
-  return `scrypt:${SCRYPT_N}:${SCRYPT_r}:${SCRYPT_p}:${salt.toString('hex')}:${derived.toString('hex')}`;
+  return bcrypt.hashSync(plain, BCRYPT_SALT_ROUNDS);
 }
 
 function verifyPassword(plain, stored) {
-  if (!stored || !stored.startsWith('scrypt:')) return false;
-  const [, N, r, p, saltHex, hashHex] = stored.split(':');
-  const salt = Buffer.from(saltHex, 'hex');
-  const expected = Buffer.from(hashHex, 'hex');
-  const derived = crypto.scryptSync(plain, salt, expected.length, {
-    N: Number(N),
-    r: Number(r),
-    p: Number(p),
-  });
-  // Constant-time comparison to avoid timing leaks.
-  return crypto.timingSafeEqual(derived, expected);
+  if (!stored) return false;
+  return bcrypt.compareSync(plain, stored);
 }
 
 function signToken(user) {
@@ -51,11 +35,35 @@ function signToken(user) {
 }
 
 /**
+ * Sets the JWT on an httpOnly cookie. The cookie is the primary token
+ * transport — we do NOT also return the token in the response body, so it
+ * cannot be read by client-side JS (XSS-resistant).
+ *
+ * - httpOnly: JS cannot read the cookie
+ * - sameSite: 'lax'  — protects against CSRF for top-level navigations
+ * - secure:    true   in production (HTTPS only)
+ */
+function setAuthCookie(res, token) {
+  res.cookie(COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: COOKIE_MAX_AGE_MS,
+    path: '/',
+  });
+}
+
+function clearAuthCookie(res) {
+  res.clearCookie(COOKIE_NAME, { path: '/' });
+}
+
+/**
  * POST /api/auth/signup
  * Body: { fullName, email, mobileNumber, password, referralCode? }
  */
 async function signup(req, res, next) {
   try {
+    console.log('[debug] signup entered, next type =', typeof next);
     const { fullName, email, mobileNumber, password, referralCode } = req.body || {};
 
     if (!fullName || !email || !mobileNumber || !password) {
@@ -97,11 +105,11 @@ async function signup(req, res, next) {
     });
 
     const token = signToken(user);
+    setAuthCookie(res, token);
 
     return res.status(201).json({
       success: true,
       message: 'Signup successful',
-      token,
       user,
     });
   } catch (err) {
@@ -121,6 +129,7 @@ async function signup(req, res, next) {
         message: `${field} already exists`,
       });
     }
+    console.log('[debug] signup catch, err:', err && err.message, 'next type =', typeof next, 'stack:', err && err.stack);
     return next(err);
   }
 }
@@ -157,12 +166,11 @@ async function login(req, res, next) {
     }
 
     const token = signToken(user);
-    // Strip password before sending the user back (toJSON transform handles this,
-    // but since we loaded with select:+password, the transform still drops it).
+    setAuthCookie(res, token);
+
     return res.json({
       success: true,
       message: 'Login successful',
-      token,
       user,
     });
   } catch (err) {
@@ -170,4 +178,14 @@ async function login(req, res, next) {
   }
 }
 
-module.exports = { signup, login };
+/**
+ * POST /api/auth/logout
+ * Clears the auth cookie. Safe to call even if the user is not logged in.
+ */
+function logout(_req, res) {
+  clearAuthCookie(res);
+  return res.json({ success: true, message: 'Logged out' });
+}
+
+module.exports = { signup, login, logout };
+

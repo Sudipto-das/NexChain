@@ -1,27 +1,42 @@
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'nexchain-dev-secret-change-me';
+const COOKIE_NAME = process.env.COOKIE_NAME || 'nexchain_token';
 
 const { User } = require('../models');
 
 /**
- * Verifies the Bearer token from the Authorization header and attaches the
- * authenticated user to `req.user` (excluding the password).
+ * Extracts the JWT from the request, preferring the httpOnly cookie set by
+ * the auth controller. Falls back to a `Authorization: Bearer <token>` header
+ * for non-browser clients (mobile apps, server-to-server calls).
+ *
+ * Returns null when no token is present.
+ */
+function extractToken(req) {
+  if (req.cookies && req.cookies[COOKIE_NAME]) {
+    return req.cookies[COOKIE_NAME];
+  }
+  const header = req.headers.authorization || '';
+  if (header.startsWith('Bearer ')) {
+    const t = header.slice('Bearer '.length).trim();
+    if (t) return t;
+  }
+  return null;
+}
+
+/**
+ * Verifies the JWT and attaches the authenticated user to `req.user`
+ * (excluding the password).
  *
  * Responses:
- *   401 — missing/malformed token, invalid signature, expired token
+ *   401 — missing token, invalid signature, expired token
  *   403 — user no longer exists or account is not Active
  */
 async function requireAuth(req, res, next) {
   try {
-    const header = req.headers.authorization || '';
-    if (!header.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'Missing or malformed Authorization header' });
-    }
-
-    const token = header.slice('Bearer '.length).trim();
+    const token = extractToken(req);
     if (!token) {
-      return res.status(401).json({ success: false, message: 'Missing token' });
+      return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
     let payload;

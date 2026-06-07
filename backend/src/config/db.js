@@ -6,7 +6,11 @@ const mongoose = require('mongoose');
  * without requiring a .env file to be present.
  */
 async function connectDB() {
-  const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/nexchain';
+  const uri = process.env.MONGO_URI;
+
+  if (!uri) {
+    throw new Error('MONGO_URI is not defined');
+  }
 
   mongoose.set('strictQuery', true);
 

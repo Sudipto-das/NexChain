@@ -1,3 +1,9 @@
 node_modules
 .agents
-skils-lock.json
+skills-lock.json
+
+# env
+.env
+.env.bak
+.env.local
+.env.*.local

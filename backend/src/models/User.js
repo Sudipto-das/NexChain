@@ -104,12 +104,12 @@ userSchema.index({ accountStatus: 1, createdAt: -1 });
  * 8 hex chars from a CSPRNG, uppercased and prefixed for readability
  * (e.g. "NC-3F9B2A1C"). Uniqueness is enforced by the unique index on
  * referralCode — collisions are vanishingly rare at 32 bits of entropy.
+ *
  */
-userSchema.pre('validate', function (next) {
+userSchema.pre('validate', function () {
   if (!this.referralCode) {
     this.referralCode = 'NC-' + crypto.randomBytes(4).toString('hex').toUpperCase();
   }
-  next();
 });
 
 const User = mongoose.model('User', userSchema);
