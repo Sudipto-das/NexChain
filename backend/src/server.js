@@ -10,6 +10,8 @@ const authRoutes = require('./routes/auth.routes');
 const investmentRoutes = require('./routes/investment.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const referralRoutes = require('./routes/referral.routes');
+const adminRoutes = require('./routes/admin.routes');
+const { startCronJobs, stopCronJobs } = require('./jobs/cron.jobs');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -38,6 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/investments', investmentRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/referrals', referralRoutes);
+app.use('/api/admin', adminRoutes);
 
 // --- 404 ---
 app.use((req, res) => {
@@ -58,9 +61,28 @@ app.use((err, _req, res, _next) => {
 async function start() {
   try {
     await connectDB();
-    app.listen(PORT, () => {
+    
+    const server = app.listen(PORT, () => {
       console.log(`[server] listening on http://localhost:${PORT} (env: ${NODE_ENV})`);
+      startCronJobs();
     });
+
+    const shutdown = (signal) => {
+      console.log(`[server] ${signal} received, shutting down gracefully...`);
+      stopCronJobs();
+      server.close(() => {
+        console.log('[server] HTTP server closed');
+        process.exit(0);
+      });
+      
+      setTimeout(() => {
+        console.error('[server] Force shutdown after timeout');
+        process.exit(1);
+      }, 10000).unref();
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
   } catch (err) {
     console.error('[fatal] failed to start server:', err.message);
     process.exit(1);

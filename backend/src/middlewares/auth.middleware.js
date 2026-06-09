@@ -62,4 +62,21 @@ async function requireAuth(req, res, next) {
   }
 }
 
-module.exports = { requireAuth };
+/**
+ * Middleware to require admin role.
+ * Assumes user document has an isAdmin or role field.
+ * Adjust based on your user model.
+ */
+function requireAdmin(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Authentication required' });
+  }
+  // Check if user is admin - adjust based on your user model
+  // For now, we'll check for an isAdmin flag or role field
+  if (req.user.isAdmin === true || req.user.role === 'admin') {
+    return next();
+  }
+  return res.status(403).json({ success: false, message: 'Admin access required' });
+}
+
+module.exports = { requireAuth, requireAdmin };
