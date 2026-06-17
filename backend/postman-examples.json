@@ -1,0 +1,214 @@
+{
+  "info": {
+    "name": "NexChain Investment & Referral APIs",
+    "description": "Example requests for testing investment and referral endpoints in Postman",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Investment APIs",
+      "item": [
+        {
+          "name": "Create Investment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planName\": \"Premium Plan\",\n  \"planDurationDays\": 30,\n  \"dailyRoiPercentage\": 1.5,\n  \"investmentAmount\": 1000,\n  \"planId\": \"plan_premium_30d\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/investments",
+              "host": ["{{base_url}}"],
+              "path": ["api", "investments"]
+            },
+            "description": "Creates a new investment for the authenticated user. All fields except planId are required."
+          }
+        },
+        {
+          "name": "Create Investment (Minimal)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planName\": \"Basic Plan\",\n  \"planDurationDays\": 7,\n  \"dailyRoiPercentage\": 0.5,\n  \"investmentAmount\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/investments",
+              "host": ["{{base_url}}"],
+              "path": ["api", "investments"]
+            },
+            "description": "Minimal required fields only. planId is optional."
+          }
+        },
+        {
+          "name": "Get User Investments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/investments?status=Active",
+              "host": ["{{base_url}}"],
+              "path": ["api", "investments"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "Active",
+                  "description": "Optional: filter by status (Active, Completed, Cancelled)"
+                }
+              ]
+            },
+            "description": "Returns all investments for the authenticated user. Optional status query param."
+          }
+        },
+        {
+          "name": "Get Investment by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/investments/{{investment_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "investments", "{{investment_id}}"]
+            },
+            "description": "Returns a single investment by ID for the authenticated user."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Referral APIs",
+      "item": [
+        {
+          "name": "Get Direct Referrals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/referrals/direct?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "referrals", "direct"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Items per page (default: 20, max: 100)"
+                }
+              ]
+            },
+            "description": "Returns direct referrals (level 1) for the authenticated user with pagination."
+          }
+        },
+        {
+          "name": "Get Referral Tree",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/referrals/tree?maxDepth=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "referrals", "tree"],
+              "query": [
+                {
+                  "key": "maxDepth",
+                  "value": "10",
+                  "description": "Maximum depth to traverse (default: 10, max: 20)"
+                }
+              ]
+            },
+            "description": "Returns the complete referral tree using recursive aggregation. Includes tree grouped by level and level statistics."
+          }
+        },
+        {
+          "name": "Get Referral Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/referrals/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "referrals", "stats"]
+            },
+            "description": "Returns referral statistics including direct referrals count, total downline, and level-wise income breakdown."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "YOUR_JWT_TOKEN_HERE",
+      "type": "string"
+    },
+    {
+      "key": "investment_id",
+      "value": "INVESTMENT_ID_FROM_CREATE_RESPONSE",
+      "type": "string"
+    }
+  ]
+}

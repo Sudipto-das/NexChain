@@ -24,6 +24,7 @@ services:
       ME_CONFIG_MONGODB_ADMINUSERNAME: admin
       ME_CONFIG_MONGODB_ADMINPASSWORD: secret123
       ME_CONFIG_MONGODB_URL: mongodb://admin:secret123@mongodb:27017/
+      ME_CONFIG_BASICAUTH: "false"
     depends_on:
       - mongodb
 
